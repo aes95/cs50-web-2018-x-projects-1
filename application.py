@@ -25,7 +25,7 @@ db = scoped_session(sessionmaker(bind=engine))
 def index():
     if not session.get('logged_in'):
         return render_template('login.html')
-    return render_template("home.html")
+    return render_template("search.html")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -33,12 +33,12 @@ def login():
         email = request.form.get('email')
         password = request.form.get('password')
         x = db.execute('SELECT password FROM users WHERE email = :email', {'email': email}).fetchone()
-        if x['password'] == password:
+        if x == None or x['password'] != password:
+            return 'Incorrect username or password. Please try again.'
+        else:
             session['logged_in'] = True
             session['email'] = email
             return index()
-        else:
-            return 'Incorrect username or password. Please try again.'
     if request.method == "GET":
         return render_template("login.html")
 
@@ -58,21 +58,41 @@ def confirmation():
         pwd = request.form.get('psw')
         email = request.form.get('email')
         email_check = db.execute("SELECT email FROM users WHERE email = :email",{'email':email}).fetchone()
-        if email_check['email'] == email:
+        if email_check != None:
             return f"Your email {email} already has an account associated with it. Please log in <a href='/login'> here <a>"
         db.execute("INSERT INTO users (email, password) VALUES(:email,:pwd)",{"email":email, "pwd":pwd})
         db.commit()
-        return "Success"
+        return "You have successfuly registered! Find books <a href='/'> here </a>"
 
 @app.route("/<string:isbn>", methods=["POST", "GET"])
-def book():
-    book_data = db.execute("SELECT * FROM books WHERE isbn=:isbn"){"isbn":isbn}).fetchone()
+def book(isbn):
+    if not session.get('logged_in'):
+        return render_template('login.html')
+    book_data = db.execute("SELECT * FROM books WHERE isbn=:isbn",{'isbn':isbn}).fetchone()
+    if book_data == None:
+        return "Book not found. Please try again <a href='/search'>Here</a>"
     title = book_data['title']
     author = book_data['author']
     year = book_data['year']
-    '''
-    text = request.form.get('search')
-    res = requests.get("https://www.goodreads.com/search/index.xml", params={'key':'EOquiAwYzuZQkS4FGKIQ', 'q':text})
-    '''
-    render_template("book.html", title=title, author=author, year = year)
+    res = requests.get("https://www.goodreads.com/book/review_counts.json", params={"key":"EOquiAwYzuZQkS4FGKIQ", "isbns":isbn}).json()
+    goodreads_avg = res['books'][0]['average_rating']
+    goodreads_count = res['books'][0]['ratings_count']
+    reviews = db.execute("SELECT * FROM reviews WHERE isbn=:isbn",{'isbn':isbn}).fetchall()
+    return render_template("book.html", title=title, author= author, year=year, isbn=isbn, rating=goodreads_avg, count=goodreads_count, reviews=reviews)
+
+@app.route("/search", methods=["POST", "GET"])
+def search():
+    search = f"%{request.form.get('search')}%"
+    results = db.execute("SELECT * FROM books WHERE title LIKE :search ",{'search':search}).fetchall()
+    return render_template('search.html', results=results)
     
+@app.route("/submit", methods=["POST"])
+def submit():
+        email = session['email']
+        isbn = request.form.get('isbn')
+        print(isbn)
+        rating = request.form.get('rating')
+        review = request.form.get('review')
+        db.execute("INSERT INTO reviews (email, isbn, rating, review) VALUES (:email, :isbn, :rating, :review)", {'email':email, 'isbn':isbn, 'rating':rating, 'review':review})
+        db.commit()
+        return index()

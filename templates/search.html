@@ -12,23 +12,27 @@
   </head>
   <body>
     <a href="/logout">Logout</a>
+    <a href="/">Home</a>
     <h1>Search for a book:</h1>
 
     <form action="/search" method="POST">
          <div class="form-row">
             <div class="col-sm-9 col-md-4">
-              <label for="myself@organization.com">Email</label>
-              <input type="search" class="form-control" name="search" placeholder="search for book">
+              <input type="search" class="form-control" name="search" placeholder="Title, Author or ISBN">
             </div>
         </div>
         <button class="btn btn-primary"> Search </button>
     </form>
     {% block body %}
+        {% if not results|length  %}
+            <h6> No results found. Please try again.</h6>
+        {% else %}
         <ul>
-            {% for result in result %}
-            <li><a href="{{ user.url }}">{{ user.username }}</a></li>
-            {% endfor %}
+        {% for result in results %}
+            <li> <a href="{{result['isbn']}}"> {{result['title']}} </a></li>
+        {% endfor %}
         </ul>
+        {% endif %}
     {% endblock %}
 
 

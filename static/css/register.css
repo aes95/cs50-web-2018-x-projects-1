@@ -21,7 +21,7 @@
   .valid:before {
     position: relative;
     left: -35px;
-    content: "&#10004;";
+    content: "\2714";
   }
   
   /* Add a red text color and an "x" icon when the requirements are wrong */
@@ -32,6 +32,7 @@
   .invalid:before {
     position: relative;
     left: -35px;
-    content: "&#10006;";
+    content: "\2716";
+    color: red;
   }
   
