@@ -1,6 +1,6 @@
 import os, requests, xml.etree.ElementTree
 
-from flask import Flask, session, render_template, request
+from flask import Flask, session, render_template, request, jsonify
 from flask_session import Session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
@@ -83,7 +83,7 @@ def book(isbn):
 @app.route("/search", methods=["POST", "GET"])
 def search():
     search = f"%{request.form.get('search')}%"
-    results = db.execute("SELECT * FROM books WHERE title LIKE :search ",{'search':search}).fetchall()
+    results = db.execute("SELECT * FROM books WHERE title LIKE :search OR author LIKE :search OR isbn LIKE :search",{'search':search}).fetchall()
     return render_template('search.html', results=results)
     
 @app.route("/submit", methods=["POST"])
@@ -96,3 +96,17 @@ def submit():
         db.execute("INSERT INTO reviews (email, isbn, rating, review) VALUES (:email, :isbn, :rating, :review)", {'email':email, 'isbn':isbn, 'rating':rating, 'review':review})
         db.commit()
         return index()
+
+@app.route("/api/<string:isbn>")
+def api(isbn):
+    book_data = db.execute("SELECT * FROM books WHERE isbn=:isbn",{'isbn':isbn}).fetchone()
+    title = book_data['title']
+    author = book_data['author']
+    year = book_data['year']
+    isbn = isbn
+    review_count = db.execute("SELECT COUNT(*) FROM reviews WHERE isbn=:isbn",{'isbn':isbn}).fetchone()[0]
+    average_score = db.execute("SELECT AVG(reviews.rating) FROM reviews WHERE isbn=:isbn",{'isbn':isbn}).fetchone()[0]
+    average_score = round(float(average_score),2)
+    dic = {"title": title, "author":author, "year": year,"isbn":isbn, "review_count":review_count, "average_score": average_score }
+    print(dic)
+    return jsonify(dic)
