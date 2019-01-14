@@ -89,6 +89,9 @@ def search():
 @app.route("/submit", methods=["POST"])
 def submit():
         email = session['email']
+        email_check = db.execute("SELECT email FROM reviews WHERE email = :email",{'email':email}).fetchone()
+        if email_check != None:
+            return f"Your email {email} has already submitted a review for this book. Please review other books <a href='/search'> here <a>"
         isbn = request.form.get('isbn')
         print(isbn)
         rating = request.form.get('rating')
